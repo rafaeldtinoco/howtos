@@ -17,7 +17,6 @@ TABLE OF CONTENTS
 			- 1.d.2-) virtio-net  vhost-net
 			- 1.d.3-) virtio-net  openvswitch
 			- 1.d.4-) virtio-net  SR-IOV
-			- 1.d.5-) virtio-pci
 		- 1.e-) Block Devices, LUNs and Disks
 			- 1.e.1-) virtio-blk
 			- 1.e.2-) virtio-scsi
@@ -522,10 +521,6 @@ kernel is the one accessing the shared memory).
 
 > both sides need to use the exact same ring layout or translations will be
 required and translations have a performance penalty attached.
-
-#### 1.d.5-) virtio-pci
-
-TODO
 
 ### 1.e-) Block Devices, LUNs and Disks
 (virtio-blk, virtio-scsi, PCI/VFIO assignment)
