@@ -1274,7 +1274,7 @@ be worth, specially regarding why avoiding vCPUs being scheduled in the same
 real HW cores/threads could be a good idea.
 
 You will find more information about this topic
-[HERE](https://wiki.ubuntu.com/rafaeldtinoco?action=AttachFile&do=view&target=QEMU_vuln_and_mit_explained.html)
+[HERE](https://rafaeldtinoco.github.io/howtos/KVM-vulnerabilities-and-mitigations.html)
 and in all documents listed there as references.
 
 For now, all you need to know is: a side-channel attack is any attack based on
