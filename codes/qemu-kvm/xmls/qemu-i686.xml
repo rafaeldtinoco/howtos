@@ -1,0 +1,60 @@
+<domain type='qemu'>
+  <name>qemui686</name>
+  <uuid>0221a736-ab22-12c2-1943-7d4cd9467c6a</uuid>
+  <memory unit='KiB'>4194304</memory>
+  <currentMemory unit='KiB'>4194304</currentMemory>
+  <vcpu placement='static'>4</vcpu>
+  <resource>
+    <partition>/machine</partition>
+  </resource>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-2.12'>hvm</type>
+    <kernel>/var/lib/libvirt/images/qemui686/vmlinuz</kernel>
+    <initrd>/var/lib/libvirt/images/qemui686/initrd.img</initrd>
+    <cmdline>root=/dev/vda noresume console=tty0 console=ttyS0,38400n8 net.ifnames=0 apparmor=0</cmdline>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='yes'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/qemui686/disk01.ext4.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <controller type='usb' index='0' model='piix3-uhci'>
+    </controller>
+    <controller type='pci' index='0' model='pci-root'/>
+    <interface type='bridge'>
+      <mac address='52:54:00:a2:f7:ff'/>
+      <source bridge='bridge0'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'>
+      <target type='isa-serial' port='0'>
+        <model name='isa-serial'/>
+      </target>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='mouse' bus='ps2'/>
+    <input type='keyboard' bus='ps2'/>
+    <memballoon model='virtio'>
+    </memballoon>
+  </devices>
+</domain>

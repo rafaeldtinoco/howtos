@@ -1,0 +1,71 @@
+<domain type='kvm'>
+  <name>kguest</name>
+  <uuid>cb9373ae-d7d5-4d92-b477-e31943806d86</uuid>
+  <memory unit='KiB'>1048576</memory>
+  <currentMemory unit='KiB'>1048576</currentMemory>
+  <vcpu placement='static'>3</vcpu>
+  <resource>
+    <partition>/machine</partition>
+  </resource>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-2.5'>hvm</type>
+    <kernel>/var/lib/libvirt/images/kguest/vmlinuz</kernel>
+    <initrd>/var/lib/libvirt/images/kguest/initrd.img</initrd>
+    <cmdline>root=/dev/vda noresume console=tty0 console=ttyS0,38400n8 apparmor=0 net.ifnames=0 crashkernel=256M</cmdline>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-passthrough' check='none'/>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='yes'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/kguest/disk01.ext4.qcow2'/>
+      <backingStore/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <controller type='usb' index='0' model='piix3-uhci'>
+    </controller>
+    <controller type='pci' index='0' model='pci-root'/>
+    <filesystem type='mount' accessmode='passthrough'>
+      <source dir='/home/inaddy'/>
+      <target dir='inaddy'/>
+    </filesystem>
+    <filesystem type='mount' accessmode='passthrough'>
+      <source dir='/root'/>
+      <target dir='root'/>
+    </filesystem>
+    <interface type='bridge'>
+      <mac address='52:54:00:30:63:03'/>
+      <source bridge='bridge0'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'>
+      <target type='isa-serial' port='0'>
+        <model name='isa-serial'/>
+      </target>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='mouse' bus='ps2'/>
+    <input type='keyboard' bus='ps2'/>
+    <memballoon model='virtio'>
+    </memballoon>
+  </devices>
+</domain>

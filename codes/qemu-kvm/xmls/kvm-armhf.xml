@@ -1,0 +1,70 @@
+<domain type='kvm'>
+  <name>kvmarmhf</name>
+  <uuid>a6a0f39e-9993-11e8-9e05-c4446a011e5b</uuid>
+  <memory unit='KiB'>2097152</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>4</vcpu>
+  <resource>
+    <partition>/machine</partition>
+  </resource>
+  <os>
+    <type arch='armv7l' machine='virt-2.12'>hvm</type>
+    <kernel>/var/lib/libvirt/images/kvmarmhf/vmlinuz</kernel>
+    <initrd>/var/lib/libvirt/images/kvmarmhf/initrd.img</initrd>
+    <cmdline>root=/dev/vda noresume console=tty0 console=ttyAMA0,38400n8 net.ifnames=0 apparmor=0</cmdline>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <gic version='3'/>
+  </features>
+  <cpu mode='host-passthrough' check='none'/>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-system-aarch64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/kvmarmhf/disk01.ext4.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <controller type='pci' index='0' model='pcie-root'/>
+    <controller type='pci' index='1' model='pcie-root-port'>
+      <model name='pcie-root-port'/>
+      <target chassis='1' port='0x8'/>
+    </controller>
+    <controller type='pci' index='2' model='pcie-root-port'>
+      <model name='pcie-root-port'/>
+      <target chassis='2' port='0x9'/>
+    </controller>
+    <controller type='pci' index='3' model='pcie-root-port'>
+      <model name='pcie-root-port'/>
+      <target chassis='3' port='0xa'/>
+    </controller>
+    <controller type='pci' index='4' model='pcie-root-port'>
+      <model name='pcie-root-port'/>
+      <target chassis='4' port='0xb'/>
+    </controller>
+    <controller type='virtio-serial' index='0'>
+    </controller>
+    <interface type='bridge'>
+      <mac address='52:54:00:be:2d:15'/>
+      <source bridge='bridge0'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'>
+      <target type='system-serial' port='0'>
+        <model name='pl011'/>
+      </target>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <console type='pty'>
+      <target type='virtio' port='1'/>
+    </console>
+    <memballoon model='virtio'>
+    </memballoon>
+  </devices>
+</domain>
