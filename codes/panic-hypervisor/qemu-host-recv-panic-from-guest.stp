@@ -1,0 +1,69 @@
+#!/usr/bin/stap
+
+%{
+#include <linux/printk.h>
+#include <linux/syscalls.h>
+#include <linux/kvm.h>
+#include <linux/kvm_host.h>
+%}
+
+function breakme()
+%{
+    printk(KERN_INFO "*ATTENTION* A guest has informed this host about a crash");
+    printk(KERN_INFO "*ATTENTION* and an action is being taken by a running systemtap");
+    printk(KERN_INFO "*ATTENTION* script. DEFAULT action is to panic the host, so, if you");
+    printk(KERN_INFO "*ATTENTION* are seen this in post-mor-tem, now you know why.");
+
+    STAP_PRINTF("BOOM\n");
+    __asm("int $13");
+%}
+
+function doit:long(data)
+%{
+    long ascii_code = (long) * ((char *) STAP_ARG_data);
+
+    // STAP_PRINTF("code: %d\n", ascii_code);
+
+    if (ascii_code == 0x1f)
+        STAP_RETURN(1);
+
+    STAP_RETURN(0);
+%}
+
+probe process("qemu-system-x86_64").function("kvm_arch_post_run")
+{
+    try {
+        reason = $cpu->kvm_run->exit_reason;
+        if (reason == 2) {
+
+            port = $cpu->kvm_run->io->port;
+            dir = $cpu->kvm_run->io->direction;
+            size = $cpu->kvm_run->io->size;
+            count = $cpu->kvm_run->io->count;
+
+            if (port == 0x3ff) {
+                if (dir == 1 && size == 1 && count == 1) {
+
+                    ptr = $cpu->kvm_run;
+                    offset = $cpu->kvm_run->io->data_offset;
+                    data = ptr + offset;
+
+                    bool = doit(data);
+                    if (bool) {
+
+                        printf("SIGNALED BY GUEST. TAKING ACTION...\n");
+                        breakme()
+
+                        // *DEBUG ONLY*
+                        //
+                        //     printf("ptr = %x, offset = %u, data = %x\tport=%x"
+                        //             ", dir=%d, size=%d, count=%d\n",
+                        //             ptr, offset, data, port, dir, size, count);
+                    }
+                }
+            }
+        }
+    } catch {
+
+    }
+}

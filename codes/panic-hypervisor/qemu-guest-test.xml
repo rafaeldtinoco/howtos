@@ -1,0 +1,76 @@
+<domain type='kvm'>
+  <name>guest</name>
+  <uuid>9d8f6c83-5746-4c2a-9ecd-1878203400ac</uuid>
+  <memory unit='KiB'>3000000</memory>
+  <currentMemory unit='KiB'>3000000</currentMemory>
+  <vcpu placement='static'>4</vcpu>
+  <cputune>
+    <vcpupin vcpu='0' cpuset='0-1'/>
+    <vcpupin vcpu='1' cpuset='1-2'/>
+    <vcpupin vcpu='2' cpuset='2-3'/>
+    <vcpupin vcpu='3' cpuset='0,3'/>
+    <emulatorpin cpuset='4-5'/>
+  </cputune>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-2.0'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-passthrough'/>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='yes'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source file='/var/lib/libvirt/images/qemu01/guest'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </disk>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source file='/var/lib/libvirt/images/qemu01/guestdebug'/>
+      <target dev='vdb' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </disk>
+    <controller type='pci' index='0' model='pci-root'/>
+    <controller type='usb' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
+    </controller>
+    <interface type='bridge'>
+      <mac address='52:54:00:4a:a6:ab'/>
+      <source bridge='internal'/>
+      <model type='virtio'/>
+      <driver name='vhost' txmode='iothread' ioeventfd='off' event_idx='off' queues='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <serial type='null'>
+      <target port='1'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <watchdog model='i6300esb' action='none'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </watchdog>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>

@@ -1,0 +1,193 @@
+#!/usr/bin/stap
+
+%{
+#include <linux/printk.h>
+#include <linux/syscalls.h>
+
+#include <linux/kvm.h>
+#include <linux/kvm_host.h>
+%}
+
+function doit(ioctl, filp) %{
+
+    struct kvm_vcpu *vcpu = ((struct file *) STAP_ARG_filp)->private_data;
+
+    switch (STAP_ARG_ioctl) {
+        case KVM_RUN: {
+            //STAP_PRINTF("IOCTL kvm_run, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_REGS: {
+            STAP_PRINTF("IOCTL kvm_get_regs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_REGS: {
+            STAP_PRINTF("IOCTL kvm_set_regs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_SREGS: {
+            STAP_PRINTF("IOCTL kvm_set_sregs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_SREGS: {
+            STAP_PRINTF("IOCTL kvm_get_sregs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_MP_STATE: {
+            STAP_PRINTF("IOCTL kvm_get_mp_state, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_MP_STATE: {
+            STAP_PRINTF("IOCTL kvm_set_mp_state, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_TRANSLATE: {
+            STAP_PRINTF("IOCTL kvm_translate, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_GUEST_DEBUG: {
+            STAP_PRINTF("IOCTL kvm_set_guest_debug, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_SIGNAL_MASK: {
+            STAP_PRINTF("IOCTL kvm_set_signal_mask, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_FPU: {
+            STAP_PRINTF("IOCTL kvm_get_fpu, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_FPU: {
+            STAP_PRINTF("IOCTL kvm_set_fpu, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+
+        //
+        // x86 related / specific implementation
+        //
+
+        case KVM_GET_LAPIC: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_lapic, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_LAPIC: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_lapic, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_INTERRUPT: {
+            STAP_PRINTF("IOCTL(x86) kvm_interrupt, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_NMI: {
+            STAP_PRINTF("IOCTL(x86) kvm_nmi, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_CPUID: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_cpuid, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_CPUID2: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_cpuid2, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_CPUID2: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_cpuid2, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_MSRS: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_msrs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_MSRS: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_msrs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_TPR_ACCESS_REPORTING: {
+            STAP_PRINTF("IOCTL(x86) kvm_tpr_access_reporting, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_VAPIC_ADDR: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_vapic_addr, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_X86_SETUP_MCE: {
+            STAP_PRINTF("IOCTL(x86) kvm_x86_setup_mce, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_X86_SET_MCE: {
+            STAP_PRINTF("IOCTL(x86) kvm_x86_set_mce, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_VCPU_EVENTS: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_vcpu_events, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_VCPU_EVENTS: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_vcpu_events, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_DEBUGREGS: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_debugregs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_DEBUGREGS: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_debugregs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_XSAVE: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_xsave, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_GET_XCRS: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_xcrs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        
+        case KVM_SET_XCRS: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_xcrs, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_SET_TSC_KHZ: {
+            STAP_PRINTF("IOCTL(x86) kvm_set_tsc_khz, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case_KVM_GET_TSC_KHZ: {
+            STAP_PRINTF("IOCTL(x86) kvm_get_tsc_khz, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_KVMCLOCK_CTRL: {
+            STAP_PRINTF("IOCTL(x86) AQUI AQUI AQUI kvm_kvmclock_ctrl, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        case KVM_ENABLE_CAP: {
+            STAP_PRINTF("IOCTL(x86) kvm_enable_cap, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+        }
+        default:
+            STAP_PRINTF("IOCTL(x86) unknown ioctl, vcpu = %d\n", vcpu->vcpu_id);
+            break;
+    }
+%}
+
+probe module("kvm").function("kvm_vcpu_ioctl")
+{
+    doit($ioctl, $filp)
+}
+
+probe process("qemu-system-x86_64").function("kvm_arch_post_run")
+{
+    try {
+
+        reason = $cpu->kvm_run->exit_reason;
+        if (reason != 2) {
+            printf("EXIT reason: %u\n", reason);
+        }
+
+        if (reason == 2) {
+            port = $cpu->kvm_run->io->port;
+            printf("I/O port: %x\n", port)
+        }
+
+    } catch (msg) {
+        println("error\n", msg)
+    }
+}

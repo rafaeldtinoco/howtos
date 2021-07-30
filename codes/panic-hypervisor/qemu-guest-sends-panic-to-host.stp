@@ -1,0 +1,29 @@
+#!/usr/bin/stap
+
+// Usage: sudo stap -g ./warn-on-panic.stp
+
+%{
+#include <linux/printk.h>
+#include <linux/syscalls.h>
+%}
+
+function doit() %{
+    printk(KERN_INFO "* GUEST PANIC DETECTED, WARNING HOST *\n");
+    __asm("movw $0x3ff, %dx");    // ttys0 isa i/o address
+    __asm("movb $0x1f, %al");    // moves ascii unit sep. char to %al
+    __asm("outb %al, (%dx)");    // writes the char to scratch register (0x3ff)
+%}
+
+//probe kernel.function("write_sysrq_trigger")
+probe kernel.function("nmi_trigger_all_cpu_backtrace")
+{
+    doit()
+}
+
+// *DEBUG ONLY*
+//
+// EXECUTED WITH: "sudo stap -g ./warn-on-panic.stp -c /bin/true"
+//
+// probe process.function("main").return {
+//     doit()
+// }

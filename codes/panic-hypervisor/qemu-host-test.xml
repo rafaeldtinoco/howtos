@@ -1,0 +1,98 @@
+<domain type='kvm'>
+  <name>panichost</name>
+  <uuid>cb9b494a-4be8-4950-a6a2-2ca9047483cf</uuid>
+  <memory unit='KiB'>6000000</memory>
+  <currentMemory unit='KiB'>6000000</currentMemory>
+  <memoryBacking>
+    <hugepages/>
+  </memoryBacking>
+  <vcpu placement='static'>6</vcpu>
+  <iothreads>4</iothreads>
+  <iothreadids>
+    <iothread id='1'/>
+    <iothread id='2'/>
+    <iothread id='3'/>
+    <iothread id='4'/>
+  </iothreadids>
+  <cputune>
+    <vcpupin vcpu='0' cpuset='0-1'/>
+    <vcpupin vcpu='1' cpuset='1-2'/>
+    <vcpupin vcpu='2' cpuset='2-3'/>
+    <vcpupin vcpu='3' cpuset='3-4'/>
+    <vcpupin vcpu='4' cpuset='4-5'/>
+    <vcpupin vcpu='5' cpuset='0,5'/>
+    <emulatorpin cpuset='6-7'/>
+    <iothreadpin iothread='1' cpuset='6-7'/>
+    <iothreadpin iothread='2' cpuset='6-7'/>
+    <iothreadpin iothread='3' cpuset='6-7'/>
+    <iothreadpin iothread='4' cpuset='6-7'/>
+  </cputune>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-2.5'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='custom' match='exact' check='partial'>
+    <model fallback='allow'>qemu64</model>
+    <feature policy='require' name='svm'/>
+  </cpu>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source file='/var/lib/libvirt/images/panichost/disk01'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </disk>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source file='/var/lib/libvirt/images/panichost/disk02'/>
+      <target dev='vdb' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </disk>
+    <controller type='pci' index='0' model='pci-root'/>
+    <controller type='usb' index='0' model='piix3-uhci'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
+    </controller>
+    <interface type='bridge'>
+      <mac address='52:54:00:3c:eb:8f'/>
+      <source bridge='internal'/>
+      <model type='virtio'/>
+      <driver name='vhost' txmode='iothread' ioeventfd='off' event_idx='off' queues='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <interface type='bridge'>
+      <mac address='52:54:00:eb:68:36'/>
+      <source bridge='internal'/>
+      <model type='virtio'/>
+      <driver name='vhost' txmode='iothread' ioeventfd='off' event_idx='off' queues='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='mouse' bus='ps2'/>
+    <input type='keyboard' bus='ps2'/>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
