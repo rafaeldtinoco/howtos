@@ -1,4 +1,4 @@
-## How to panic a hypervisor as soon as QEMU guest panics
+## Panic'ing a hypervisor by QEMU triggers
 
 So, I had these scripts saved for sometime now and forgot to share: doing it
 now. I cannot think on why this would be useful for anyone not in a
