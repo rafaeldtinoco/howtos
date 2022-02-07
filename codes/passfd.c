@@ -36,161 +36,169 @@
 int
 main(int argc, char *argv[])
 {
-    int pid, status;
-    int ret = 0;
-    int fd[2];
+	int pid, status;
+	int ret = 0;
+	int fd[2];
 
-    ret = socketpair(AF_UNIX, SOCK_STREAM, 0, fd);
+	ret = socketpair(AF_UNIX, SOCK_STREAM, 0, fd);
 
-    if (ret != 0)
-        fatality("socketpair");
+	if (ret != 0)
+		fatality("socketpair");
 
-    pid = fork();
+	pid = fork();
 
-    if (pid == 0) {
+	if (pid == 0) {
 
-        // parent
+		// parent
 
-        int filed, status;
-        char buffer[21], filebuf[1024];
-        struct msghdr msg;
-        struct iovec iov;
-        struct cmsghdr *cmsg;
+		int filed, status;
+		char buffer[21], filebuf[1024];
+		struct msghdr msg;
+		struct iovec iov;
+		struct cmsghdr *cmsg;
 
-        union {
-            char buf[CMSG_SPACE(sizeof(int))];
-            struct cmsghdr align;
-        } cmsgu;
+		union {
+			char buf[CMSG_SPACE(sizeof(int))];
+			struct cmsghdr align;
+		} cmsgu;
 
-        close(fd[1]);
-        memset(&filebuf, 0, 1024);
-        memset(&buffer, 0, 21);
+		close(fd[1]);
+		memset(&filebuf, 0, 1024);
+		memset(&buffer, 0, 21);
 
-        strncpy((char *) &buffer, BUFFER, 21);
+		strncpy((char *) &buffer, BUFFER, 21);
 
-        // tmpfile: create contents
+		// tmpfile: create contents
 
-        filed = open(TPFILE, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
-        if (filed == -1)
-            fatality("open");
+		filed = open(TPFILE, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
 
-        ret = write(filed, "1234567890", 10);
-        if (ret != 10)
-            fatality("write");
+		if (filed == -1)
+			fatality("open");
 
-        close(filed);
+		ret = write(filed, "1234567890", 10);
 
-        // tmpfile: check contents
+		if (ret != 10)
+			fatality("write");
 
-        filed = open(TPFILE, O_RDONLY);
-        if (filed == -1)
-            fatality("open");
+		close(filed);
 
-        ret = read(filed, &filebuf, 1024);
-        if (ret < 0)
-            fatal("could not read tmpfile");
+		// tmpfile: check contents
 
-        close(filed);
+		filed = open(TPFILE, O_RDONLY);
 
-        // tmpfile: open fd
+		if (filed == -1)
+			fatality("open");
 
-        filed = open(TPFILE, O_RDONLY);
-        if (filed == -1)
-            fatality("open");
+		ret = read(filed, &filebuf, 1024);
 
-        // prepare control message to be sent
+		if (ret < 0)
+			fatal("could not read tmpfile");
 
-        memset(&msg, 0, sizeof(struct msghdr));
-        memset(&iov, 0, sizeof(struct iovec));
+		close(filed);
 
-        iov.iov_base = &buffer;
-        iov.iov_len = 21;
+		// tmpfile: open fd
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
-        msg.msg_control = cmsgu.buf;
-        msg.msg_controllen = sizeof(cmsgu.buf);
+		filed = open(TPFILE, O_RDONLY);
 
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+		if (filed == -1)
+			fatality("open");
 
-        memcpy(CMSG_DATA(cmsg), &filed, sizeof(int));
+		// prepare control message to be sent
 
-        // send control message
+		memset(&msg, 0, sizeof(struct msghdr));
+		memset(&iov, 0, sizeof(struct iovec));
 
-        ret = sendmsg(fd[0], &msg, 0);
-        if (ret == -1)
-            fatality("sendmsg");
+		iov.iov_base = &buffer;
+		iov.iov_len = 21;
 
-        // finish
+		msg.msg_name = NULL;
+		msg.msg_namelen = 0;
+		msg.msg_iov = &iov;
+		msg.msg_iovlen = 1;
+		msg.msg_control = cmsgu.buf;
+		msg.msg_controllen = sizeof(cmsgu.buf);
 
-        out("buffer sent: %s\n", buffer);
-        out("file descriptor: %d\n", filed);
-        out("file contents: %s\n", filebuf);
+		cmsg = CMSG_FIRSTHDR(&msg);
+		cmsg->cmsg_level = SOL_SOCKET;
+		cmsg->cmsg_type = SCM_RIGHTS;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(int));
 
-        wait(&status);
+		memcpy(CMSG_DATA(cmsg), &filed, sizeof(int));
 
-        close(filed);
-        unlink(TPFILE);
+		// send control message
 
-    } else {
+		ret = sendmsg(fd[0], &msg, 0);
 
-        // child
+		if (ret == -1)
+			fatality("sendmsg");
 
-        int childfd;
-        char buffer[21], filebuf[1024];
-        struct msghdr msg;
-        struct iovec iov;
-        struct cmsghdr *cmsg;
+		// finish
 
-        union {
-            char buf[CMSG_SPACE(sizeof(int))];
-            struct cmsghdr align;
-        } cmsgu;
+		out("buffer sent: %s\n", buffer);
+		out("file descriptor: %d\n", filed);
+		out("file contents: %s\n", filebuf);
 
-        close(fd[0]);
+		wait(&status);
 
-        memset(&filebuf, 0, 1024);
-        memset(&buffer, 0, 21);
-        memset(&msg, 0, sizeof(struct msghdr));
-        memset(&iov, 0, sizeof(struct iovec));
+		close(filed);
+		unlink(TPFILE);
 
-        // prepare control message to be received
+	} else {
 
-        iov.iov_base = &buffer;
-        iov.iov_len = 21;
+		// child
 
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
-        msg.msg_control = cmsgu.buf;
-        msg.msg_controllen = sizeof(cmsgu.buf);
+		int childfd;
+		char buffer[21], filebuf[1024];
+		struct msghdr msg;
+		struct iovec iov;
+		struct cmsghdr *cmsg;
 
-        // receive control message
+		union {
+			char buf[CMSG_SPACE(sizeof(int))];
+			struct cmsghdr align;
+		} cmsgu;
 
-        ret = recvmsg(fd[1], &msg, 0);
-        if (ret == -1)
-            fatality("sendmsg");
+		close(fd[0]);
 
-        cmsg = CMSG_FIRSTHDR(&msg);
-        childfd = *(int *) CMSG_DATA(cmsg);
+		memset(&filebuf, 0, 1024);
+		memset(&buffer, 0, 21);
+		memset(&msg, 0, sizeof(struct msghdr));
+		memset(&iov, 0, sizeof(struct iovec));
 
-        // finish
+		// prepare control message to be received
 
-        out("buffer received: %s\n", buffer);
-        out("file descriptor: %d\n", childfd);
+		iov.iov_base = &buffer;
+		iov.iov_len = 21;
 
-        ret = read(childfd, &filebuf, 1024);
-        if (ret == -1)
-            fatality("read");
+		msg.msg_name = NULL;
+		msg.msg_namelen = 0;
+		msg.msg_iov = &iov;
+		msg.msg_iovlen = 1;
+		msg.msg_control = cmsgu.buf;
+		msg.msg_controllen = sizeof(cmsgu.buf);
 
-        out("file contents: %s\n", filebuf);
-    }
+		// receive control message
 
-    exit(0);
+		ret = recvmsg(fd[1], &msg, 0);
+
+		if (ret == -1)
+			fatality("sendmsg");
+
+		cmsg = CMSG_FIRSTHDR(&msg);
+		childfd = *(int *) CMSG_DATA(cmsg);
+
+		// finish
+
+		out("buffer received: %s\n", buffer);
+		out("file descriptor: %d\n", childfd);
+
+		ret = read(childfd, &filebuf, 1024);
+
+		if (ret == -1)
+			fatality("read");
+
+		out("file contents: %s\n", filebuf);
+	}
+
+	exit(0);
 }
