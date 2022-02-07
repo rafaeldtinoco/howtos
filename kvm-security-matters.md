@@ -138,7 +138,7 @@ TCG code will not be as fast as running native code. However with a reasonable
 host system you can get a pretty good experience, especially when emulating
 older and slower chips.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/HLBv0iCYU.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/HLBv0iCYU.png"></p>
 
 The Tiny Code Generator (TCG) aims to remove the shortcoming of relying on a
 particular compiler, instead incorporating the compiler (code generator) into
@@ -190,7 +190,7 @@ For special memory regions, KVM follows a similar approach, marking memory
 regions as Read Only or not mapping them at all, causing a vmexit with the
 KVM_EXIT_MMIO reason.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/Xk24rzZ1f.png" width=640px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/Xk24rzZ1f.png" width=640px></p>
 
 ### 1.c-) Device Assignment Methods
 
@@ -205,11 +205,11 @@ device-visible virtual addresses (also called device addresses or I/O
 addresses in this context) to physical addresses. Some units also provide
 memory protection from faulty or malicious devices.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/6SejA0e0d.png" width=320px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/6SejA0e0d.png" width=320px></p>
 
 #### 1.c.2-) VFIO
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/qPSZzsHCO.png" width=240px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/qPSZzsHCO.png" width=240px></p>
 
 Let's consider a generic PCI device above, which is a real hardware attached
 to host system. The host can use generic kernel drivers to drive the device.
@@ -217,7 +217,7 @@ In that case, all the reads/writes of that device will be protected by host
 IOMMU (part of host chipset), which is safe. The protected DMAs are shown in
 green arrow.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/-fVITcbiw.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/-fVITcbiw.png"></p>
 
 The PCI device can also be assigned to a guest. By leveraging VFIO driver in
 the host kernel, the device can be exclusively managed by any userspace
@@ -249,7 +249,7 @@ handled through trapped faults.
 
 Then the picture will be like:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/k4UUFMTBR.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/k4UUFMTBR.png"></p>
 
 In the above figure, the only difference from previous case is that we
 introduced guest vIOMMU to do DMA protections. With that, guest DMAs are safe
@@ -278,7 +278,7 @@ Actually there are at least two ways that DPDK applications can manage a
 device in the userspace (and these methods are mostly general as well not
 limited to DPDK use cases): with and without a vIOMMU.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/NQ0ALsHQm.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/NQ0ALsHQm.png"></p>
 
 In above case, PCI Device 1 and PCI Device 2 are two devices that are assigned
 to guest DPDK applications. In the host, both of the devices are assigned to
@@ -297,7 +297,7 @@ appear to be multiple separate physical devices.
 
 An image illustrating SR-IOV usage:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/0bJytygrD.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/0bJytygrD.png" width=560px></p>
 
 SR-IOV enables a Single Root Function (for example, a single Ethernet port),
 to appear as multiple, separate, physical devices. A physical device with
@@ -356,7 +356,7 @@ cards).
 
 #### 1.d.1-) virtio
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/bXEwrI5_D.png" width=480px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/bXEwrI5_D.png" width=480px></p>
 
 Virtio is an open specification for virtual machines' data I/O communication,
 offering a straightforward, efficient, standard and extensible mechanism for
@@ -420,7 +420,7 @@ from kernel to the guest, and vice-versa, theere would be a context switch.
 Context switches are expensive adding latency to the application and requires
 more processing time (as QEMU is yet another linux process).
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/42Zz5ctJt.png" width=320px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/42Zz5ctJt.png" width=320px></p>
 
 * VIRTIO part (2): **vhost protocol**
 allows the VIRTIO dataplane implementation to be offloaded to another element
@@ -441,7 +441,7 @@ post focuses on the kernel implementation also known as vhost-net.
 * vhost-net = backend component: host side of the VIRTIO interface
 * virtio-net = frontend component: guest side of the VIRTIO interface
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/DG-1FvSQM.png" width=320px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/DG-1FvSQM.png" width=320px></p>
 
 > vhost-net is part of the host kernel but and yet still called 'driver'
 
@@ -458,7 +458,7 @@ frontend:
 * data plane communication is accomplished through dedicated queues
 * each guest vCPU has at least 1 RX/TX queue
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/3vFpxsnbh.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/3vFpxsnbh.png" width=560px></p>
 
 Up to this point we have described how the guest can pass the packets to the
 host kernel using the virtio-networking interface.
@@ -478,7 +478,7 @@ part and a kernel part:
 The OVS controller communicates both with the database server and the kernel
 forwarding plane. To push packets in and out of the OVS we use Linux ports.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/3R2WwClFm.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/3R2WwClFm.png" width=560px></p>
 
 In the example above we have one port that connects the OVS kernel forwarding
 plane to a physical NIC while the other port connects to the vhost-net backend
@@ -510,7 +510,7 @@ transfer the actual data (packets) between NIC and guest. When connecting the
 NIC directly to the guest, this implies that the NIC is required to support
 the VIRTIO ring layout.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/CpDycbt-4.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/CpDycbt-4.png" width=560px></p>
 
 > This is the model we will be analyzing further in a virtual machine XML example.
 
@@ -540,7 +540,7 @@ either try to maximize throughput, flexibility or resource-sharing. The
 illustration bellow summarizes the different para-virtualized device types
 QEMU can present to a guest regarding its vdisks:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/a338VxcQk.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/a338VxcQk.png" width=560px></p>
 
 The vdisks functionalities - and their intersection with the Host OS in
 regards to resource sharing and/or security surface - varies depending on the
@@ -570,11 +570,11 @@ defined.
 
 > sometimes it is simpler to use a single virtio-scsi PCI adapter instead.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/xljxmlEUq.png" width=340px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/xljxmlEUq.png" width=340px></p>
 
 * virtio-blk SCSI handling
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/ufy9WbRgw.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/ufy9WbRgw.png" width=560px></p>
 
 > SCSI passthrough was removed from the Linux virtio-blk driver in v5.6 in favor of using virtio-scsi
 
@@ -599,7 +599,7 @@ supported by virtio-scsi, not by virtio-blk.
 There are different backends to support a virtio-scsi device being given to a
 virtual machine:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/GR2MCLi2j.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/GR2MCLi2j.png" width=560px></p>
 
 ##### i. virtio-scsi: **QEMU target** SCSI handling
 
@@ -609,7 +609,7 @@ acceleration) the guest communicates with QEMU using the VIRTIO protocol and
 QEMU does the I/O to the backing device. (files: qcow2, raw ; devices or
 LUNs).
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/QKPU3ahSG.png" width=560px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/QKPU3ahSG.png" width=560px></p>
 
 ##### ii. virtio-scsi: **LIO target** SCSI handling
 
@@ -636,11 +636,11 @@ logical SCSI fabric. This includes SCSI sessions across interconnects with no
 physical SCSI bus at all. Conceptually, the SCSI target provides a generic
 block storage service or server in this scenario.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/goWXGg43P.png" width=400px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/goWXGg43P.png" width=400px></p>
 
 Now it is easier to understand QEMU backend for LIO:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/jHejCLAmY.png" width=320px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/jHejCLAmY.png" width=320px></p>
 
 As you can see, this virtio-scsi method is close to what virtio-net/vhost-net
 schema is for a networking device. The vdisk communicates directly with
@@ -652,7 +652,7 @@ in-kernel LIO subsystem after initially setup by QEMU.
 
 Differently from the LIO target approach, which allows the virtual machine to communicate directly to the HostOS kernel LIO subsystem, by using libiscsi support within QEMU you are making the QEMU emulation process to do the SCSI I/O on your vdisk's behalf:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/913PdOgpo.png" width=320px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/913PdOgpo.png" width=320px></p>
 
 > Network analogy: virtio-net
 
@@ -660,7 +660,7 @@ Differently from the LIO target approach, which allows the virtual machine to co
 
 A vdisk backed by a real SCSI device can also be achieved using VFIO, just as explained in **Device Assignment Methods**.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/RYDoRp94L.png" width=420px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/RYDoRp94L.png" width=420px></p>
 
 ## 2-) QEMU Internals
 
@@ -743,7 +743,7 @@ In summary, the VIRTIO driver interface exposes:
 * Zero or more virtqueues
 * Transport specific interface to the device
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/vKU-wZ0a1.png" width=720px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/vKU-wZ0a1.png" width=720px></p>
 
 The VIRTIO network device is a virtual ethernet card, and it supports
 multiqueue for TX/RX. Empty buffers are placed in N virtqueues for receiving
@@ -781,7 +781,7 @@ The process of receiving a packet is similar to that of sending it. The only
 difference is that, in this case, empty buffers are pre-allocated by the guest
 and made available to the device so it can write the incoming data to them.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/DDq5fRI9x.png" width=720px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/DDq5fRI9x.png" width=720px></p>
 
 ### 2.d-) Vhost protocol
 
@@ -839,7 +839,7 @@ driver is the communication channel. While the vhost-net kernel driver
 implements this channel using ioctls, the vhost-user library defines the
 structure of messages that are sent over a unix socket.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/YkC5_dob5.png" width=720px></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/YkC5_dob5.png" width=720px></p>
 
 A few points to mention on this diagram:
 
@@ -1506,7 +1506,7 @@ have to emulate (or intercept) instructions unless some emulation is required.
 Without entering in too many technical details on how this is done, the
 important part to understand is this:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/ItBWTnHn-.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/ItBWTnHn-.png"></p>
 
 Paying special attention to the right side of the picture above, you can see
 "VM Entry" and "VM Exist" signs. The main idea is this: the KVM module sets
@@ -1819,7 +1819,7 @@ vdisks subject.
 
 By also checking how vdisks can be cached by the HostOS:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/hV8kGrwut.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/hV8kGrwut.png"></p>
 
 It is clear that vdisk's security depends on the type of I/O being used by the
 virtual machine (sync, async, buffered, direct) and the HostOS pagecache
@@ -1854,7 +1854,7 @@ Ceph's object storage system allows users to mount Ceph as a thin-provisioned bl
 
 This is how QEMU uses librbd as a storage backend engine:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/QCsx1MJU2.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/QCsx1MJU2.png"></p>
 and, obviously, each different backing storage mechanism increases or decreases the security surface depending on the resources that are shared with the HostOS and the mechanisms needed for it to operate (such as authentication, communication, and so).
 
 ### 3.h-) QEMU vNIC AND SR-IOV
@@ -2116,7 +2116,7 @@ FlatView #0
 Security surface related to this communication channel is either a file or a file descriptor, opened by either libvirt or QEMU with that intent. From the QEMU instance command line:
 
 ```
-libvirt+    3660  0.0  1.6 6357284 3250448 ?     Sl   May19 144:53 /bin/QEMU-system-x86_64 -name guest=_dropbox,debug-threads=on -S -object secret,id=masterKey0,format=raw,file=/var/lib/libvirt/QEMU/domain-3-_dropbox/master-key.aes -machine pc-i440fx-2.12,accel=KVM,usb=off,vmport=off,dump-guest-core=off -cpu SandyBridge-IBRS,vme=on,ss=on,vmx=on,pdcm=on,hypervisor=on,arat=on,tsc-adjust=on,umip=on,md-clear=on,stibp=on,arch-capabilities=on,ssbd=on,xsaveopt=on,pdpe1gb=on,ibpb=on,ibrs=on,amd-stibp=on,amd-ssbd=on,pschange-mc-no=on -m 4096 -overcommit mem-lock=off -smp 4,sockets=4,cores=1,threads=1 -uuid 1370902f-4cd4-47bb-bbf3-58134444c692 -no-user-config -nodefaults -chardev socket,id=charmonitor,fd=29,server,nowait -mon chardev=charmonitor,id=monitor,mode=control -rtc base=utc,driftfix=slew -global KVM-pit.lost_tick_policy=delay -no-hpet -no-shutdown -global PIIX4_PM.disable_s3=1 -global PIIX4_PM.disable_s4=1 -boot menu=off,strict=on -device ich9-usb-ehci1,id=usb,bus=pci.0,addr=0x3.0x7 -device ich9-usb-uhci1,masterbus=usb.0,firstport=0,bus=pci.0,multifunction=on,addr=0x3 -device ich9-usb-uhci2,masterbus=usb.0,firstport=2,bus=pci.0,addr=0x3.0x1 -device ich9-usb-uhci3,masterbus=usb.0,firstport=4,bus=pci.0,addr=0x3.0x2 -device virtio-serial-pci,id=virtio-serial0,bus=pci.0,addr=0x5 -blockdev {"driver":"file","filename":"/var/lib/libvirt/images/_dropbox-disk01.qcow2","node-name":"libvirt-1-storage","auto-read-only":true,"discard":"unmap"} -blockdev {"node-name":"libvirt-1-format","read-only":false,"driver":"qcow2","file":"libvirt-1-storage","backing":null} -device virtio-blk-pci,bus=pci.0,addr=0x6,drive=libvirt-1-format,id=virtio-disk0,bootindex=1 -netdev tap,fd=31,id=hostnet0 -device virtio-net-pci,netdev=hostnet0,id=net0,mac=52:54:00:da:42:09,bus=pci.0,addr=0x2 -chardev spicevmc,id=charchannel0,name=vdagent -device virtserialport,bus=virtio-serial0.0,nr=1,chardev=charchannel0,id=channel0,name=com.redhat.spice.0 -device usb-tablet,id=input2,bus=usb.0,port=1 -spice port=5900,addr=127.0.0.1,disable-ticketing,image-compression=off,seamless-migration=on -device qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1,bus=pci.0,addr=0x4 -device AC97,id=sound0,bus=pci.0,addr=0x8 -chardev spicevmc,id=charredir0,name=usbredir -device usb-redir,chardev=charredir0,id=redir0,bus=usb.0,port=2 -chardev spicevmc,id=charredir1,name=usbredir -device usb-redir,chardev=charredir1,id=redir1,bus=usb.0,port=3 -device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x7 -sandbox on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny -msg timestamp=on
+libvirt+    3660  0.0  1.6 6357284 3250448 ?     Sl   May19 144:53 /bin/QEMU-system-x86_64 -name guest=_dropbox,debug-threads=on -S -object secret,id=masterKey0,format=raw,file=/var/lib/libvirt/QEMU/domain-3-_dropbox/master-key.aes -machine pc-i440fx-2.12,accel=KVM,usb=off,vmport=off,dump-guest-core=off -cpu SandyBridge-IBRS,vme=on,ss=on,vmx=on,pdcm=on,hypervisor=on,arat=on,tsc-adjust=on,umip=on,md-clear=on,stibp=on,arch-capabilities=on,ssbd=on,xsaveopt=on,pdpe1gb=on,ibpb=on,ibrs=on,amd-stibp=on,amd-ssbd=on,pschange-mc-no=on -m 4096 -overcommit mem-lock=off -smp 4,sockets=4,cores=1,threads=1 -uuid 1370902f-4cd4-47bb-bbf3-58134444c692 -no-user-config -nodefaults -chardev socket,id=charmonitor,fd=29,server,nowait -mon chardev=charmonitor,id=monitor,mode=control -rtc base=utc,driftfix=slew -global KVM-pit.lost_tick_policy=delay -no-hpet -no-shutdown -global PIIX4_PM.disable_s3=1 -global PIIX4_PM.disable_s4=1 -boot menu=off,strict=on -device ich9-usb-ehci1,id=usb,bus=pci.0,addr=0x3.0x7 -device ich9-usb-uhci1,masterbus=usb.0,firstport=0,bus=pci.0,multifunction=on,addr=0x3 -device ich9-usb-uhci2,masterbus=usb.0,firstport=2,bus=pci.0,addr=0x3.0x1 -device ich9-usb-uhci3,masterbus=usb.0,firstport=4,bus=pci.0,addr=0x3.0x2 -device virtio-serial-pci,id=virtio-serial0,bus=pci.0,addr=0x5 -blockdev {"driver":"file","filename":"/var/lib/libvirt/images/kvm-security-matters/_dropbox-disk01.qcow2","node-name":"libvirt-1-storage","auto-read-only":true,"discard":"unmap"} -blockdev {"node-name":"libvirt-1-format","read-only":false,"driver":"qcow2","file":"libvirt-1-storage","backing":null} -device virtio-blk-pci,bus=pci.0,addr=0x6,drive=libvirt-1-format,id=virtio-disk0,bootindex=1 -netdev tap,fd=31,id=hostnet0 -device virtio-net-pci,netdev=hostnet0,id=net0,mac=52:54:00:da:42:09,bus=pci.0,addr=0x2 -chardev spicevmc,id=charchannel0,name=vdagent -device virtserialport,bus=virtio-serial0.0,nr=1,chardev=charchannel0,id=channel0,name=com.redhat.spice.0 -device usb-tablet,id=input2,bus=usb.0,port=1 -spice port=5900,addr=127.0.0.1,disable-ticketing,image-compression=off,seamless-migration=on -device qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1,bus=pci.0,addr=0x4 -device AC97,id=sound0,bus=pci.0,addr=0x8 -chardev spicevmc,id=charredir0,name=usbredir -device usb-redir,chardev=charredir0,id=redir0,bus=usb.0,port=2 -chardev spicevmc,id=charredir1,name=usbredir -device usb-redir,chardev=charredir1,id=redir1,bus=usb.0,port=3 -device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x7 -sandbox on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny -msg timestamp=on
 ```
 
 we have:
@@ -3678,20 +3678,20 @@ layer).
 If someone keeps sending data to an emulated SLIRP device at port 113 there
 might be a heap overflow:
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/k4G43ryoD.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/k4G43ryoD.png"></p>
 
 The exploit takes advantage of the fact the QEMU SLIRP emulated device will
 allocate buffers for fragmented packets, in order to reconstruct a bigger
 packet at the end using the initial fragmented packet allocation buffer.
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/AQ9F-tPy_.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/AQ9F-tPy_.png"></p>
 
 By causing an overflow to an allocated data buffer, and combining requests for
 the host emulated device to deal with fragmented packets, one can 'steal'
 memory data from QEMU memory (at least of the part dealing with the device
 emulation).
 
-<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/wCmPNEvY0.png"></p>
+<p align=center><img src="https://github.com/rafaeldtinoco/howtos/blob/main/images/kvm-security-matters/wCmPNEvY0.png"></p>
 
 > This CVE shows a real possible attack to emulated devices - as long as
 you're using the SLIRP emulated device (also known as User Networking). Check
