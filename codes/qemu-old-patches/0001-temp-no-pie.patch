@@ -1,0 +1,30 @@
+From a4923ea58832a74864ff35babfe4c1b1bb5db7ee Mon Sep 17 00:00:00 2001
+From: Rafael David Tinoco <rafael.tinoco@canonical.com>
+Date: Tue, 8 Nov 2016 21:23:01 -0200
+Subject: [PATCH 1/4] temp: no-pie
+
+---
+ rules.mak | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/rules.mak b/rules.mak
+index 0333ae3..1a59910 100644
+--- a/rules.mak
++++ b/rules.mak
+@@ -93,7 +93,12 @@ module-common.o: CFLAGS += $(DSO_OBJ_CFLAGS)
+ 	$(if $(findstring /,$@),$(call quiet-command,cp $@ $(subst /,-,$@),"CP","$(subst /,-,$@)"))
+ 
+ 
+-LD_REL := $(CC) -nostdlib -Wl,-r $(LD_REL_FLAGS)
++ifeq (,$(shell $(CC) -fsyntax-only -no-pie -xc /dev/null 2>&1))
++no_pie:=-no-pie
++else
++no_pie:=
++endif
++LD_REL := $(CC) $(no_pie) -nostdlib -Wl,-r $(LD_REL_FLAGS)
+ 
+ %.mo:
+ 	$(call quiet-command,$(LD_REL) -o $@ $^,"LD","$(TARGET_DIR)$@")
+-- 
+2.10.2
+

@@ -1,0 +1,450 @@
+From 547111c79e8a7cfc1764d00977a480c65abd5630 Mon Sep 17 00:00:00 2001
+From: Rafael David Tinoco <rafael.tinoco@canonical.com>
+Date: Tue, 8 Nov 2016 17:02:50 -0200
+Subject: [PATCH 3/4] util: mmap-file - support for host file-backed memory
+ maps.
+
+Created so vhost shared log files can be backed by a file. This
+will allow security drivers to apply rules to log files created
+by this tool. Added an unit test that guarantees this utility
+is working, specially when passing fd in between processes so
+the log file is shared.
+
+Signed-off-by: Rafael David Tinoco <rafael.tinoco@canonical.com>
+---
+ include/qemu/mmap-file.h |  10 +++
+ tests/Makefile.include   |   1 +
+ tests/test-mmap-file.c   | 220 +++++++++++++++++++++++++++++++++++++++++++++++
+ util/Makefile.objs       |   1 +
+ util/mmap-file.c         | 151 ++++++++++++++++++++++++++++++++
+ 5 files changed, 383 insertions(+)
+ create mode 100644 include/qemu/mmap-file.h
+ create mode 100644 tests/test-mmap-file.c
+ create mode 100644 util/mmap-file.c
+
+diff --git a/include/qemu/mmap-file.h b/include/qemu/mmap-file.h
+new file mode 100644
+index 0000000..427612a
+--- /dev/null
++++ b/include/qemu/mmap-file.h
+@@ -0,0 +1,10 @@
++#ifndef QEMU_MMAP_FILE_H
++#define QEMU_MMAP_FILE_H
++
++#include "qemu-common.h"
++
++void *qemu_mmap_alloc(const char *path, size_t size, int *fd);
++void qemu_mmap_free(void *ptr, size_t size, int fd);
++bool qemu_mmap_check(const char *path);
++
++#endif
+diff --git a/tests/Makefile.include b/tests/Makefile.include
+index de51634..215158a 100644
+--- a/tests/Makefile.include
++++ b/tests/Makefile.include
+@@ -687,6 +687,7 @@ tests/test-x86-cpuid-compat$(EXESUF): tests/test-x86-cpuid-compat.o $(qtest-obj-
+ tests/ivshmem-test$(EXESUF): tests/ivshmem-test.o contrib/ivshmem-server/ivshmem-server.o $(libqos-pc-obj-y)
+ tests/vhost-user-bridge$(EXESUF): tests/vhost-user-bridge.o
+ tests/test-uuid$(EXESUF): tests/test-uuid.o $(test-util-obj-y)
++tests/test-mmap-file$(EXESUF): tests/test-mmap-file.o util/mmap-file.o
+ tests/test-arm-mptimer$(EXESUF): tests/test-arm-mptimer.o
+ 
+ tests/migration/stress$(EXESUF): tests/migration/stress.o
+diff --git a/tests/test-mmap-file.c b/tests/test-mmap-file.c
+new file mode 100644
+index 0000000..7339f16
+--- /dev/null
++++ b/tests/test-mmap-file.c
+@@ -0,0 +1,220 @@
++/*
++ * Tests for file-backed memory maps and fd passing.
++ *
++ * Author: Rafael David Tinoco <rafael.tinoco@canonical.com>
++ * Copyright (c) 2016 Canonical, Ltd.
++ *
++ * This work is licensed under the terms of the GNU LGPL, version 2.
++ */
++
++#include "qemu/osdep.h"
++#include "qemu/mmap-file.h"
++
++#include <sys/types.h>
++#include <sys/socket.h>
++
++#define BUFSIZE 8192
++#define BUFMASK 8191
++
++#define fatal(str)\
++    do { \
++        if (str) { \
++            fprintf(stderr, "%s:%d\n", __FILE__, __LINE__); \
++            exit(1); \
++        } \
++    } while (0);
++
++int pfd, cfd;
++
++static inline char *get_tmpdir(void)
++{
++    static char *tmpdir;
++    if (!tmpdir) {
++        tmpdir = (char *) g_get_tmp_dir();
++    }
++    return tmpdir;
++}
++
++static inline char *get_tmpfile(void)
++{
++    static char *tmpfile;
++    if (!tmpfile) {
++        tmpfile = g_strdup_printf("%s/.mmapfile", get_tmpdir());
++    }
++    return tmpfile;
++}
++
++static void check_tmp_file_creation(void)
++{
++    int ret, filed;
++    char *tmpfile = get_tmpfile();
++
++    filed = open(tmpfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
++    g_assert(filed == -1);
++
++    ret = unlink(tmpfile);
++    g_assert(ret != -1);
++
++    close(filed);
++}
++
++static void check_mmap_alloc(char *path)
++{
++    int fd = -1;
++    char *ptr = NULL;
++
++    ptr = qemu_mmap_alloc(path, BUFSIZE, &fd);
++    g_assert(ptr != NULL && fd > 2);
++    qemu_mmap_free(ptr, BUFSIZE, fd);
++}
++
++static void check_mmap_alloc_file(void)
++{
++    char *tmpfile = get_tmpfile();
++
++    check_mmap_alloc(tmpfile);
++}
++
++static void check_mmap_alloc_dir(void)
++{
++    char *tmpdir = get_tmpdir();
++
++    check_mmap_alloc(tmpdir);
++}
++
++static void check_mmap_fdpass(void)
++{
++    int status, ret, filed;
++    char *map, buffer[6];
++    struct msghdr msg;
++    struct iovec iov;
++    struct cmsghdr *cmsg;
++
++    union {
++        char buf[CMSG_SPACE(sizeof(int))];
++        struct cmsghdr align;
++    } cmsgu;
++
++    map = qemu_mmap_alloc(get_tmpfile(), BUFSIZE, &filed);
++    g_assert(map != NULL);
++    g_assert(filed > 2);
++
++    memset(map, 0, BUFSIZE);
++    g_strlcpy((char *) (map + 0x1000), "qwert", 6);
++
++    memset(&buffer, 0, sizeof(buffer));
++    g_strlcpy((char *) &buffer, "aeiou", 6);
++
++    memset(&msg, 0, sizeof(struct msghdr));
++    memset(&iov, 0, sizeof(struct iovec));
++
++    iov.iov_base = &buffer;
++    iov.iov_len = 6;
++
++    msg.msg_name = NULL;
++    msg.msg_namelen = 0;
++    msg.msg_iov = &iov;
++    msg.msg_iovlen = 1;
++
++    msg.msg_control = cmsgu.buf;
++    msg.msg_controllen = sizeof(cmsgu.buf);
++
++    cmsg = CMSG_FIRSTHDR(&msg);
++    cmsg->cmsg_level = SOL_SOCKET;
++    cmsg->cmsg_type = SCM_RIGHTS;
++    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
++
++    memcpy(CMSG_DATA(cmsg), &filed, sizeof(int));
++
++    ret = sendmsg(pfd, &msg, 0);
++    g_assert(ret != -1);
++
++    wait(&status);
++
++    qemu_mmap_free(map, BUFSIZE, filed);
++
++    g_assert(WIFEXITED(status));
++    g_assert(WEXITSTATUS(status) == 0);
++}
++
++static void mmap_fdrecv(void)
++{
++    int ret, childfd;
++    char map[BUFSIZE], buffer[6];
++    struct msghdr msg;
++    struct iovec iov;
++    struct cmsghdr *cmsg;
++
++    union {
++        char buf[CMSG_SPACE(sizeof(int))];
++        struct cmsghdr align;
++    } cmsgu;
++
++    memset(&map, 0, BUFSIZE);
++    memset(&buffer, 0, sizeof(buffer));
++    memset(&msg, 0, sizeof(struct msghdr));
++    memset(&iov, 0, sizeof(struct iovec));
++
++    iov.iov_base = &buffer;
++    iov.iov_len = 6;
++
++    msg.msg_name = NULL;
++    msg.msg_namelen = 0;
++    msg.msg_iov = &iov;
++    msg.msg_iovlen = 1;
++
++    msg.msg_control = cmsgu.buf;
++    msg.msg_controllen = sizeof(cmsgu.buf);
++
++    ret = recvmsg(cfd, &msg, 0);
++    fatal(ret == -1);
++
++    cmsg = CMSG_FIRSTHDR(&msg);
++    childfd = *(int *) CMSG_DATA(cmsg);
++
++    ret = read(childfd, &map, BUFSIZE);
++    fatal(ret == -1);
++
++    ret = g_strcmp0((char *) &buffer, "aeiou");
++    fatal(ret != 0);
++
++    ret = g_strcmp0((char *) map + 0x1000, "qwert");
++    fatal(ret != 0);
++
++    close(childfd);
++
++    exit(0);
++}
++
++int main(int argc, char *argv[])
++{
++    int pid, ret, fds[2];
++
++    g_test_init(&argc, &argv, NULL);
++
++    ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, fds);
++    g_assert(ret != -1);
++
++    pfd = fds[0];
++    cfd = fds[1];
++    pid = fork();
++
++    if (pid != 0) {
++        close(cfd);
++
++        g_test_add_func("/mmap-file/tmp_file_creation",
++                        check_tmp_file_creation);
++        g_test_add_func("/mmap-file/mmap_file_creation",
++                        check_mmap_alloc_file);
++        g_test_add_func("/mmap-file/mmap_tmp_file_creation",
++                        check_mmap_alloc_dir);
++        g_test_add_func("/mmap-file/mmap_fdpass",
++                        check_mmap_fdpass);
++
++    } else {
++        close(pfd);
++        mmap_fdrecv();
++    }
++
++    return g_test_run();
++}
+diff --git a/util/Makefile.objs b/util/Makefile.objs
+index ad0f9c7..5bdefd5 100644
+--- a/util/Makefile.objs
++++ b/util/Makefile.objs
+@@ -3,6 +3,7 @@ util-obj-y += bufferiszero.o
+ util-obj-$(CONFIG_POSIX) += compatfd.o
+ util-obj-$(CONFIG_POSIX) += event_notifier-posix.o
+ util-obj-$(CONFIG_POSIX) += mmap-alloc.o
++util-obj-$(CONFIG_POSIX) += mmap-file.o
+ util-obj-$(CONFIG_POSIX) += oslib-posix.o
+ util-obj-$(CONFIG_POSIX) += qemu-openpty.o
+ util-obj-$(CONFIG_POSIX) += qemu-thread-posix.o
+diff --git a/util/mmap-file.c b/util/mmap-file.c
+new file mode 100644
+index 0000000..dfb3812
+--- /dev/null
++++ b/util/mmap-file.c
+@@ -0,0 +1,151 @@
++/*
++ * Support for host file-backed memory maps.
++ *
++ * Author: Rafael David Tinoco <rafael.tinoco@canonical.com>
++ * Copyright (c) 2016 Canonical, Ltd.
++ *
++ * This work is licensed under the terms of the GNU LGPL, version 2.
++ */
++
++#include "qemu/osdep.h"
++#include "qemu/mmap-file.h"
++
++static char *qemu_mmap_rand_name(void)
++{
++    char *name;
++    GRand *rsufix;
++    guint32 sufix;
++
++    rsufix = g_rand_new();
++    sufix = g_rand_int(rsufix);
++    g_free(rsufix);
++    name = g_strdup_printf("mmap-%u", sufix);
++
++    return name;
++}
++
++static inline void qemu_mmap_rand_name_free(char *str)
++{
++    g_free(str);
++}
++
++static bool qemu_mmap_is(const char *path, mode_t what)
++{
++    struct stat s;
++
++    memset(&s,  0, sizeof(struct stat));
++    if (stat(path, &s)) {
++        goto negative;
++    }
++
++    if ((s.st_mode & S_IFMT) == what) {
++        return true;
++    }
++
++negative:
++    return false;
++}
++
++static inline bool qemu_mmap_is_file(const char *path)
++{
++    return qemu_mmap_is(path, S_IFREG);
++}
++
++static inline bool qemu_mmap_is_dir(const char *path)
++{
++    return qemu_mmap_is(path, S_IFDIR);
++}
++
++static void *qemu_mmap_alloc_file(const char *filepath, size_t size, int *fd)
++{
++    void *ptr;
++    int mfd = -1;
++
++    *fd = -1;
++
++    mfd = open(filepath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
++    if (mfd == -1) {
++        perror("open");
++        return NULL;
++    }
++
++    unlink(filepath);
++
++    if (ftruncate(mfd, size) == -1) {
++        perror("ftruncate");
++        close(mfd);
++        return NULL;
++    }
++
++    ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, mfd, 0);
++    if (ptr == MAP_FAILED) {
++        perror("mmap");
++        close(mfd);
++        return NULL;
++    }
++
++    *fd = mfd;
++    return ptr;
++}
++
++static void *qemu_mmap_alloc_dir(const char *dirpath, size_t size, int *fd)
++{
++    void *ptr;
++    char *file, *rand, *tmp, *dir2use = NULL;
++
++    if (dirpath && !qemu_mmap_is_dir(dirpath)) {
++        return NULL;
++    }
++
++    tmp = (char *) g_get_tmp_dir();
++    dir2use = dirpath ? (char *) dirpath : tmp;
++    rand = qemu_mmap_rand_name();
++    file = g_strdup_printf("%s/%s", dir2use, rand);
++    ptr = qemu_mmap_alloc_file(file, size, fd);
++    g_free(tmp);
++    qemu_mmap_rand_name_free(rand);
++
++    return ptr;
++}
++
++/*
++ * "path" can be:
++ *
++ *   filename = full path for the file to back mmap
++ *   dir path = full dir path where to create random file for mmap
++ *   null     = will use <tmpdir>  to create random file for mmap
++ */
++void *qemu_mmap_alloc(const char *path, size_t size, int *fd)
++{
++    if (!path || qemu_mmap_is_dir(path)) {
++        return qemu_mmap_alloc_dir(path, size, fd);
++    }
++
++    return qemu_mmap_alloc_file(path, size, fd);
++}
++
++void qemu_mmap_free(void *ptr, size_t size, int fd)
++{
++    if (ptr) {
++        munmap(ptr, size);
++    }
++
++    if (fd != -1) {
++        close(fd);
++    }
++}
++
++bool qemu_mmap_check(const char *path)
++{
++    void *ptr;
++    int fd = -1;
++    bool r = true;
++
++    ptr = qemu_mmap_alloc(path, 4096, &fd);
++    if (!ptr) {
++        r = false;
++    }
++    qemu_mmap_free(ptr, 4096, fd);
++
++    return r == true ? true : false;
++}
+-- 
+2.10.2
+

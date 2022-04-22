@@ -1,0 +1,309 @@
+From 7dd4e3eaf50ca2c7ec3be10b4d4aae2e795e81e6 Mon Sep 17 00:00:00 2001
+From: Rafael David Tinoco <rafael.tinoco@canonical.com>
+Date: Wed, 9 Nov 2016 13:13:01 +0000
+Subject: [PATCH 4/4] vhost: secure vhost shared log files using argv paremeter
+
+Commit: 35f9b6e added a fallback mechanism for systems not supporting
+memfd_create syscall (started being supported since 3.17).
+
+Backporting memfd_create might not be accepted for distros relying
+on older kernels. Nowadays there is no way for security driver
+to discover memfd filename to be created: <tmpdir>/memfd-XXXXXX.
+
+Also, because vhost log file descriptors can be passed to other
+processes, after discussion, we thought it is best to back mmap by
+using files that can be placed into a specific directory: this commit
+creates "vhostlog" argv parameter for such purpose. This will allow
+security drivers to operate on those files appropriately.
+
+Argv examples:
+
+    -netdev tap,id=net0,vhost=on
+    -netdev tap,id=net0,vhost=on,vhostlog=/tmp/guest.log
+    -netdev tap,id=net0,vhost=on,vhostlog=/tmp
+
+For vhost backends supporting shared logs, if vhostlog is non-existent,
+or a directory, random files are going to be created in the specified
+directory (or, for non-existent, in tmpdir). If vhostlog is specified,
+the filepath is always used when allocating vhost log files.
+
+Signed-off-by: Rafael David Tinoco <rafael.tinoco@canonical.com>
+---
+ hw/net/vhost_net.c        |  4 ++--
+ hw/scsi/vhost-scsi.c      |  2 +-
+ hw/virtio/vhost-vsock.c   |  2 +-
+ hw/virtio/vhost.c         | 40 +++++++++++++++++++++++-----------------
+ include/hw/virtio/vhost.h |  4 +++-
+ include/net/vhost_net.h   |  1 +
+ net/tap.c                 |  6 ++++++
+ qapi-schema.json          |  3 +++
+ qemu-options.hx           |  3 ++-
+ 9 files changed, 42 insertions(+), 23 deletions(-)
+
+diff --git a/hw/net/vhost_net.c b/hw/net/vhost_net.c
+index f2d49ad..d650c92 100644
+--- a/hw/net/vhost_net.c
++++ b/hw/net/vhost_net.c
+@@ -171,8 +171,8 @@ struct vhost_net *vhost_net_init(VhostNetOptions *options)
+         net->dev.vq_index = net->nc->queue_index * net->dev.nvqs;
+     }
+ 
+-    r = vhost_dev_init(&net->dev, options->opaque,
+-                       options->backend_type, options->busyloop_timeout);
++    r = vhost_dev_init(&net->dev, options->opaque, options->backend_type,
++                       options->busyloop_timeout, options->vhostlog);
+     if (r < 0) {
+         goto fail;
+     }
+diff --git a/hw/scsi/vhost-scsi.c b/hw/scsi/vhost-scsi.c
+index 5b26946..5dc3d30 100644
+--- a/hw/scsi/vhost-scsi.c
++++ b/hw/scsi/vhost-scsi.c
+@@ -248,7 +248,7 @@ static void vhost_scsi_realize(DeviceState *dev, Error **errp)
+     s->dev.backend_features = 0;
+ 
+     ret = vhost_dev_init(&s->dev, (void *)(uintptr_t)vhostfd,
+-                         VHOST_BACKEND_TYPE_KERNEL, 0);
++                         VHOST_BACKEND_TYPE_KERNEL, 0, NULL);
+     if (ret < 0) {
+         error_setg(errp, "vhost-scsi: vhost initialization failed: %s",
+                    strerror(-ret));
+diff --git a/hw/virtio/vhost-vsock.c b/hw/virtio/vhost-vsock.c
+index b481562..6cf6081 100644
+--- a/hw/virtio/vhost-vsock.c
++++ b/hw/virtio/vhost-vsock.c
+@@ -342,7 +342,7 @@ static void vhost_vsock_device_realize(DeviceState *dev, Error **errp)
+     vsock->vhost_dev.nvqs = ARRAY_SIZE(vsock->vhost_vqs);
+     vsock->vhost_dev.vqs = vsock->vhost_vqs;
+     ret = vhost_dev_init(&vsock->vhost_dev, (void *)(uintptr_t)vhostfd,
+-                         VHOST_BACKEND_TYPE_KERNEL, 0);
++                         VHOST_BACKEND_TYPE_KERNEL, 0, NULL);
+     if (ret < 0) {
+         error_setg_errno(errp, -ret, "vhost-vsock: vhost_dev_init failed");
+         goto err_virtio;
+diff --git a/hw/virtio/vhost.c b/hw/virtio/vhost.c
+index 25bf67f..dabf3e3 100644
+--- a/hw/virtio/vhost.c
++++ b/hw/virtio/vhost.c
+@@ -20,7 +20,7 @@
+ #include "qemu/atomic.h"
+ #include "qemu/range.h"
+ #include "qemu/error-report.h"
+-#include "qemu/memfd.h"
++#include "qemu/mmap-file.h"
+ #include <linux/vhost.h>
+ #include "exec/address-spaces.h"
+ #include "hw/virtio/virtio-bus.h"
+@@ -326,7 +326,7 @@ static uint64_t vhost_get_log_size(struct vhost_dev *dev)
+     return log_size;
+ }
+ 
+-static struct vhost_log *vhost_log_alloc(uint64_t size, bool share)
++static struct vhost_log *vhost_log_alloc(char *path, uint64_t size, bool share)
+ {
+     struct vhost_log *log;
+     uint64_t logsize = size * sizeof(*(log->log));
+@@ -334,9 +334,7 @@ static struct vhost_log *vhost_log_alloc(uint64_t size, bool share)
+ 
+     log = g_new0(struct vhost_log, 1);
+     if (share) {
+-        log->log = qemu_memfd_alloc("vhost-log", logsize,
+-                                    F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL,
+-                                    &fd);
++        log->log = qemu_mmap_alloc(path, logsize, &fd);
+         memset(log->log, 0, logsize);
+     } else {
+         log->log = g_malloc0(logsize);
+@@ -349,12 +347,12 @@ static struct vhost_log *vhost_log_alloc(uint64_t size, bool share)
+     return log;
+ }
+ 
+-static struct vhost_log *vhost_log_get(uint64_t size, bool share)
++static struct vhost_log *vhost_log_get(char *path, uint64_t size, bool share)
+ {
+     struct vhost_log *log = share ? vhost_log_shm : vhost_log;
+ 
+     if (!log || log->size != size) {
+-        log = vhost_log_alloc(size, share);
++        log = vhost_log_alloc(path, size, share);
+         if (share) {
+             vhost_log_shm = log;
+         } else {
+@@ -388,8 +386,7 @@ static void vhost_log_put(struct vhost_dev *dev, bool sync)
+             g_free(log->log);
+             vhost_log = NULL;
+         } else if (vhost_log_shm == log) {
+-            qemu_memfd_free(log->log, log->size * sizeof(*(log->log)),
+-                            log->fd);
++            qemu_mmap_free(log->log, log->size * sizeof(*(log->log)), log->fd);
+             vhost_log_shm = NULL;
+         }
+ 
+@@ -405,9 +402,12 @@ static bool vhost_dev_log_is_shared(struct vhost_dev *dev)
+ 
+ static inline void vhost_dev_log_resize(struct vhost_dev *dev, uint64_t size)
+ {
+-    struct vhost_log *log = vhost_log_get(size, vhost_dev_log_is_shared(dev));
+-    uint64_t log_base = (uintptr_t)log->log;
+     int r;
++    struct vhost_log *log;
++    uint64_t log_base;
++
++    log = vhost_log_get(dev->log_filename, size, vhost_dev_log_is_shared(dev));
++    log_base = (uintptr_t)log->log;
+ 
+     /* inform backend of log switching, this must be done before
+        releasing the current log, to ensure no logging is lost */
+@@ -1049,7 +1049,8 @@ static void vhost_virtqueue_cleanup(struct vhost_virtqueue *vq)
+ }
+ 
+ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
+-                   VhostBackendType backend_type, uint32_t busyloop_timeout)
++                   VhostBackendType backend_type,
++                   uint32_t busyloop_timeout, char *vhostlog)
+ {
+     uint64_t features;
+     int i, r, n_initialized_vqs = 0;
+@@ -1118,11 +1119,17 @@ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
+         .priority = 10
+     };
+ 
++    hdev->log = NULL;
++    hdev->log_size = 0;
++    hdev->log_enabled = false;
++    hdev->log_filename = vhostlog ? g_strdup(vhostlog) : NULL;
++    g_free(vhostlog);
++
+     if (hdev->migration_blocker == NULL) {
+         if (!(hdev->features & (0x1ULL << VHOST_F_LOG_ALL))) {
+             error_setg(&hdev->migration_blocker,
+                        "Migration disabled: vhost lacks VHOST_F_LOG_ALL feature.");
+-        } else if (vhost_dev_log_is_shared(hdev) && !qemu_memfd_check()) {
++        } else if (vhost_dev_log_is_shared(hdev) && !qemu_mmap_check(NULL)) {
+             error_setg(&hdev->migration_blocker,
+                        "Migration disabled: failed to allocate shared memory");
+         }
+@@ -1135,9 +1142,6 @@ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
+     hdev->mem = g_malloc0(offsetof(struct vhost_memory, regions));
+     hdev->n_mem_sections = 0;
+     hdev->mem_sections = NULL;
+-    hdev->log = NULL;
+-    hdev->log_size = 0;
+-    hdev->log_enabled = false;
+     hdev->started = false;
+     hdev->memory_changed = false;
+     memory_listener_register(&hdev->memory_listener, &address_space_memory);
+@@ -1175,6 +1179,7 @@ void vhost_dev_cleanup(struct vhost_dev *hdev)
+     if (hdev->vhost_ops) {
+         hdev->vhost_ops->vhost_backend_cleanup(hdev);
+     }
++    g_free(hdev->log_filename);
+     assert(!hdev->log);
+ 
+     memset(hdev, 0, sizeof(struct vhost_dev));
+@@ -1338,7 +1343,8 @@ int vhost_dev_start(struct vhost_dev *hdev, VirtIODevice *vdev)
+         uint64_t log_base;
+ 
+         hdev->log_size = vhost_get_log_size(hdev);
+-        hdev->log = vhost_log_get(hdev->log_size,
++        hdev->log = vhost_log_get(hdev->log_filename,
++                                  hdev->log_size,
+                                   vhost_dev_log_is_shared(hdev));
+         log_base = (uintptr_t)hdev->log->log;
+         r = hdev->vhost_ops->vhost_set_log_base(hdev,
+diff --git a/include/hw/virtio/vhost.h b/include/hw/virtio/vhost.h
+index e433089..1ea4f3a 100644
+--- a/include/hw/virtio/vhost.h
++++ b/include/hw/virtio/vhost.h
+@@ -52,6 +52,7 @@ struct vhost_dev {
+     uint64_t max_queues;
+     bool started;
+     bool log_enabled;
++    char *log_filename;
+     uint64_t log_size;
+     Error *migration_blocker;
+     bool memory_changed;
+@@ -65,7 +66,8 @@ struct vhost_dev {
+ 
+ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
+                    VhostBackendType backend_type,
+-                   uint32_t busyloop_timeout);
++                   uint32_t busyloop_timeout,
++                   char *vhostlog);
+ void vhost_dev_cleanup(struct vhost_dev *hdev);
+ int vhost_dev_start(struct vhost_dev *hdev, VirtIODevice *vdev);
+ void vhost_dev_stop(struct vhost_dev *hdev, VirtIODevice *vdev);
+diff --git a/include/net/vhost_net.h b/include/net/vhost_net.h
+index 5a08eff..94161b2 100644
+--- a/include/net/vhost_net.h
++++ b/include/net/vhost_net.h
+@@ -12,6 +12,7 @@ typedef struct VhostNetOptions {
+     NetClientState *net_backend;
+     uint32_t busyloop_timeout;
+     void *opaque;
++    char *vhostlog;
+ } VhostNetOptions;
+ 
+ uint64_t vhost_net_get_max_queues(VHostNetState *net);
+diff --git a/net/tap.c b/net/tap.c
+index b6896a7..7b242cd 100644
+--- a/net/tap.c
++++ b/net/tap.c
+@@ -699,6 +699,12 @@ static void net_init_tap_one(const NetdevTapOptions *tap, NetClientState *peer,
+         }
+         options.opaque = (void *)(uintptr_t)vhostfd;
+ 
++        if (tap->has_vhostlog) {
++            options.vhostlog = g_strdup(tap->vhostlog);
++        } else {
++            options.vhostlog = NULL;
++        }
++
+         s->vhost_net = vhost_net_init(&options);
+         if (!s->vhost_net) {
+             error_setg(errp,
+diff --git a/qapi-schema.json b/qapi-schema.json
+index b0b4bf6..d6decdb 100644
+--- a/qapi-schema.json
++++ b/qapi-schema.json
+@@ -2733,6 +2733,8 @@
+ #
+ # @vhostforce: #optional vhost on for non-MSIX virtio guests
+ #
++# @vhostlog: #optional file or directory for vhost backend log
++#
+ # @queues: #optional number of queues to be created for multiqueue capable tap
+ #
+ # @poll-us: #optional maximum number of microseconds that could
+@@ -2755,6 +2757,7 @@
+     '*vhostfd':    'str',
+     '*vhostfds':   'str',
+     '*vhostforce': 'bool',
++    '*vhostlog':   'str',
+     '*queues':     'uint32',
+     '*poll-us':    'uint32'} }
+ 
+diff --git a/qemu-options.hx b/qemu-options.hx
+index 4536e18..1f8906a 100644
+--- a/qemu-options.hx
++++ b/qemu-options.hx
+@@ -1599,7 +1599,7 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
+ #else
+     "-netdev tap,id=str[,fd=h][,fds=x:y:...:z][,ifname=name][,script=file][,downscript=dfile]\n"
+     "         [,br=bridge][,helper=helper][,sndbuf=nbytes][,vnet_hdr=on|off][,vhost=on|off]\n"
+-    "         [,vhostfd=h][,vhostfds=x:y:...:z][,vhostforce=on|off][,queues=n]\n"
++    "         [,vhostfd=h][,vhostfds=x:y:...:z][,vhostforce=on|off][,vhostlog=file|dir][,queues=n]\n"
+     "         [,poll-us=n]\n"
+     "                configure a host TAP network backend with ID 'str'\n"
+     "                connected to a bridge (default=" DEFAULT_BRIDGE_INTERFACE ")\n"
+@@ -1618,6 +1618,7 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
+     "                use vhost=on to enable experimental in kernel accelerator\n"
+     "                    (only has effect for virtio guests which use MSIX)\n"
+     "                use vhostforce=on to force vhost on for non-MSIX virtio guests\n"
++    "                use 'vhostlog=file|dir' file or directory for vhost backend log\n"
+     "                use 'vhostfd=h' to connect to an already opened vhost net device\n"
+     "                use 'vhostfds=x:y:...:z to connect to multiple already opened vhost net devices\n"
+     "                use 'queues=n' to specify the number of queues to be created for multiqueue TAP\n"
+-- 
+2.10.2
+
